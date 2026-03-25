@@ -165,3 +165,11 @@ for name, model in models.items():
     
     print("\n--- Evaluation ---")
     evaluate(model, names)
+
+    torch.save(model.state_dict(), "model.pth")
+    size_mb = os.path.getsize("model.pth") / (1024 * 1024)
+
+    print(f"Model size: {size_mb:.2f} MB")
+
+    num_params = sum(p.numel() for p in model.parameters())
+    print(num_params)

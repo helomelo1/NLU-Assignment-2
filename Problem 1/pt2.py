@@ -1,10 +1,3 @@
-"""
-PREPROCESSING FILE
-
-Requirements:
-WordCloud MatPlotLib
-"""
-
 import re
 import json
 from collections import Counter
@@ -21,7 +14,7 @@ stopwords = {
     "credit","requirement","academic"
 }
 
-def clean_text(text):
+def clean_sentence(text):
     text = text.lower()
     text = text.replace("ph.d.", "phd").replace("ph.d", "phd")
     text = text.replace("m.tech.", "mtech").replace("b.tech.", "btech")
@@ -39,29 +32,45 @@ def generate_bigrams(tokens, min_count=5):
 
 files = ["ALL_html.txt", "ALL_pdf.txt"]
 
-clean_docs = []
+sentences = []
 all_tokens = []
 
 for file in files:
     text = open(file, encoding="utf-8").read()
-    tokens = clean_text(text)
-    bigrams = generate_bigrams(tokens, min_count=5)
-    tokens = tokens + bigrams
-    clean_docs.append(tokens)
-    all_tokens.extend(tokens)
+
+    # split into sentences FIRST
+    raw_sentences = re.split(r'[.!?]', text)
+
+    for s in raw_sentences:
+        tokens = clean_sentence(s)
+
+        if len(tokens) < 4:
+            continue
+
+        bigrams = generate_bigrams(tokens, min_count=5)
+        tokens = tokens + bigrams
+
+        sentences.append(tokens)
+        all_tokens.extend(tokens)
 
 freq = Counter(all_tokens)
 min_count = 5
-filtered_tokens = [t for t in all_tokens if freq[t] >= min_count]
 
-print("Documents:", len(clean_docs))
-print("Total Tokens:", len(filtered_tokens))
-print("Vocabulary Size:", len(set(filtered_tokens)))
+# filter vocab AFTER building sentences
+filtered_sentences = []
+for sent in sentences:
+    filtered = [t for t in sent if freq[t] >= min_count]
+    if len(filtered) >= 4:
+        filtered_sentences.append(filtered)
+
+print("Sentences:", len(filtered_sentences))
+print("Total Tokens:", sum(len(s) for s in filtered_sentences))
+print("Vocabulary Size:", len(set(t for s in filtered_sentences for t in s)))
 
 with open("sentences.json", "w") as f:
-    json.dump(clean_docs, f)
+    json.dump(filtered_sentences, f)
 
-text = " ".join(filtered_tokens)
+text = " ".join(t for s in filtered_sentences for t in s)
 
 wc = WordCloud(width=1000, height=500, background_color="white", collocations=False).generate(text)
 
